@@ -218,6 +218,14 @@ export default function App() {
     return localStorage.getItem('social_yt_title2') || 'मुख्यमंत्री बाल गोपाल दूध मात्रा प्रविष्टि दिशा निर्देश';
   });
 
+  const [cmPhotoUrl, setCmPhotoUrl] = useState(() => {
+    return localStorage.getItem('cm_photo_url') || 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Bhajan_Lal_Sharma_in_2024.jpg/250px-Bhajan_Lal_Sharma_in_2024.jpg';
+  });
+
+  const [minPhotoUrl, setMinPhotoUrl] = useState(() => {
+    return localStorage.getItem('min_photo_url') || 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Madan_Dilawar_in_2024.jpg/250px-Madan_Dilawar_in_2024.jpg';
+  });
+
   // Dynamic news announcements
   const [announcements, setAnnouncements] = useState<string[]>(() => {
     const saved = localStorage.getItem('portal_announcements');
@@ -231,7 +239,7 @@ export default function App() {
 
   // Dynamic Circulars & Orders from Google Drive
   const [circularOrders, setCircularOrders] = useState(() => {
-    const saved = localStorage.getItem('circular_orders_list');
+    const saved = localStorage.getItem('block_circular_orders') || localStorage.getItem('circular_orders_list');
     return saved ? JSON.parse(saved) : [
       {
         id: 'ord-1',
@@ -330,10 +338,33 @@ export default function App() {
     photoUrl: ''
   });
 
+  // Circular orders addition states
+  const [showAddOrderForm, setShowAddOrderForm] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    title: '',
+    category: 'सामान्य',
+    date: new Date().toISOString().split('T')[0], // YYYY-MM-DD default
+    driveUrl: '',
+    uploadedFileName: '',
+    uploadedFileData: '',
+    isLocalUpload: false
+  });
+
   // State for PIN code unlock mechanism
   const [isUnlocked, setIsUnlocked] = useState(() => {
     return localStorage.getItem('did_unlock_editor') === 'true';
   });
+
+  const handleTabChange = (newTab: TabType) => {
+    if (isUnlocked && newTab !== 'data_editor') {
+      alert('⚠️ सुरक्षा चेतावनी: जब तक डेटा संशोधन पैनल अनलॉक (Unlocked) है, तब तक अन्य सभी नेविगेशन प्रभाग सुरक्षित रूप से लॉक रहेंगे। पूरा सिस्टम देखने के लिए कृपया डेटा संशोधन पैनल में सबसे ऊपर स्थित "सुरक्षित पुनः लॉक करें" (या आंकड़े सहेजें) बटन पर क्लिक करके पहले पैनल को वापस लॉक करें!');
+      return;
+    }
+    setActiveTab(newTab);
+    // Auto scroll main panel up on mobile
+    document.getElementById('main-focus-panel')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState('');
   const [editorSubTab, setEditorSubTab] = useState<'general_social' | 'schools_schemes' | 'academic_stats' | 'staff_gallery'>('general_social');
@@ -475,7 +506,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col selection:bg-orange-600 selection:text-white">
       {/* 1. Administrative Header with Notification Bar */}
-      <AdministrativeHeader shalaDarpanCode={shalaDarpanCode} announcements={announcements} />
+      <AdministrativeHeader 
+        shalaDarpanCode={shalaDarpanCode} 
+        announcements={announcements} 
+        isUnlocked={isUnlocked}
+        setIsUnlocked={setIsUnlocked}
+        cmPhotoUrl={cmPhotoUrl}
+        setCmPhotoUrl={setCmPhotoUrl}
+        minPhotoUrl={minPhotoUrl}
+        setMinPhotoUrl={setMinPhotoUrl}
+      />
 
       {/* 2. Main content container */}
       <main className="max-w-7xl w-full mx-auto px-4 py-6 md:py-8 flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -498,27 +538,33 @@ export default function App() {
                     {group.groupTitle}
                   </p>
                   <div className="space-y-0.5">
-                    {group.items.map((item) => (
-                      <button
-                        key={item.id}
-                        id={`nav-item-${item.id}`}
-                        onClick={() => {
-                          setActiveTab(item.id as TabType);
-                          // Auto scroll main panel up on mobile
-                          document.getElementById('main-focus-panel')?.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2.5 ${
-                          activeTab === item.id
-                            ? 'bg-orange-600 text-white shadow-sm font-extrabold ring-1 ring-orange-500/20'
-                            : 'text-slate-705 text-slate-700 hover:bg-orange-50 hover:text-orange-900'
-                        }`}
-                      >
-                        <span className={activeTab === item.id ? 'text-white' : 'text-slate-400 shrink-0'}>
-                          {item.icon}
-                        </span>
-                        <span>{item.label}</span>
-                      </button>
-                    ))}
+                    {group.items.map((item) => {
+                      const isTabDisabled = isUnlocked && item.id !== 'data_editor';
+                      return (
+                        <button
+                          key={item.id}
+                          id={`nav-item-${item.id}`}
+                          onClick={() => handleTabChange(item.id as TabType)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-bold transition flex items-center justify-between gap-2.5 ${
+                            activeTab === item.id
+                              ? 'bg-orange-600 text-white shadow-sm font-extrabold ring-1 ring-orange-500/20'
+                              : isTabDisabled
+                                ? 'text-slate-405 text-slate-400 bg-slate-100/50 cursor-not-allowed opacity-50'
+                                : 'text-slate-705 text-slate-700 hover:bg-orange-50 hover:text-orange-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className={activeTab === item.id ? 'text-white' : 'text-slate-400 shrink-0'}>
+                              {item.icon}
+                            </span>
+                            <span>{item.label}</span>
+                          </div>
+                          {isTabDisabled && (
+                            <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -582,13 +628,13 @@ export default function App() {
                   
                   <div className="flex flex-wrap gap-2.5 pt-3">
                     <button
-                      onClick={() => setActiveTab('games_quiz')}
+                      onClick={() => handleTabChange('games_quiz')}
                       className="px-4 py-2 bg-white text-orange-700 font-extrabold text-xs rounded-xl shadow hover:bg-slate-50 transition"
                     >
                       🎮 ऑनलाइन क्विज़ खेलें
                     </button>
                     <button
-                      onClick={() => setActiveTab('auto_analysis')}
+                      onClick={() => handleTabChange('auto_analysis')}
                       className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl shadow hover:bg-slate-800 transition flex items-center gap-1"
                     >
                       📈 सांख्यिकी ऑटो रिपोर्ट
@@ -685,7 +731,7 @@ export default function App() {
                       <span>कक्षा 10वीं बोर्ड पास रेट प्रक्षेप पथ (2021-25)</span>
                     </h4>
                     <button 
-                      onClick={() => setActiveTab('board_results')}
+                      onClick={() => handleTabChange('board_results')}
                       className="text-[10px] text-orange-600 font-bold hover:underline"
                     >
                       विस्तृत देखें
@@ -714,7 +760,7 @@ export default function App() {
                       <span>राजस्थान सरकार: नवीन शिक्षा नीति लक्ष्य</span>
                     </h4>
                     <button 
-                      onClick={() => setActiveTab('schemes')}
+                      onClick={() => handleTabChange('schemes')}
                       className="text-[10px] text-indigo-600 font-bold hover:underline"
                     >
                       सभी योजनाएं
@@ -759,7 +805,7 @@ export default function App() {
                     <p className="text-xs font-bold text-slate-900">राउमावि पहाड़ी एवं राउमावि कैथवाडा</p>
                     <p className="text-[11px] text-slate-500">स्मार्ट कक्षा-कक्ष, कंप्यूटर प्रयोगशाला, रोबोटिक्स लैब, ग्रीन सोलर रूफटॉप और उत्कृष्ट आधुनिक शिक्षण विधियाँ क्रियाशील।</p>
                     <button 
-                      onClick={() => setActiveTab('pm_shri')}
+                      onClick={() => handleTabChange('pm_shri')}
                       className="text-[10px] text-indigo-600 font-bold hover:underline flex items-center gap-0.5 pt-1"
                     >
                       सुविधाएं देखें ➔
@@ -774,7 +820,7 @@ export default function App() {
                     <p className="text-xs font-bold text-slate-900">राजकीय अंग्रेजी माध्यम प्राथमिक/सेकेंडरी स्कूल</p>
                     <p className="text-[11px] text-slate-500">ग्रामीण अंचल के बच्चों को गुणवत्तापूर्ण उत्कृष्ट अंग्रेजी संभाषण प्रशिक्षण, कम्प्यूटर कौशल एवं सह-शैक्षणिक विकास गतिविधियाँ।</p>
                     <button 
-                      onClick={() => setActiveTab('mggs')}
+                      onClick={() => handleTabChange('mggs')}
                       className="text-[10px] text-rose-600 font-bold hover:underline flex items-center gap-0.5 pt-1"
                     >
                       प्रवेश व सीटें देखें ➔
@@ -1668,22 +1714,22 @@ export default function App() {
                     <p className="text-xs text-slate-600 leading-normal font-medium font-sans">
                       आप मुख्य ब्लॉक पहाड़ी के सुरक्षित विंग से प्रस्थान कर <strong>"{redirectWarningUrl.title}"</strong> अधिकृत राज्य स्तरीय शिक्षा विभाग पोर्टल पर जा रहे हैं। क्या आप जारी रखना चाहते हैं?
                     </p>
-
-                    <div className="flex gap-2 text-xs font-bold">
+                    
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                       <button
                         onClick={() => setRedirectWarningUrl(null)}
-                        className="flex-1 py-1.5 px-3 border rounded-lg hover:bg-slate-50 text-slate-700 cursor-pointer"
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
                       >
-                        रद्द करें
+                        रद्द करें ✕
                       </button>
                       <a
                         href={redirectWarningUrl.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => setRedirectWarningUrl(null)}
-                        className="flex-1 py-1.5 px-3 bg-indigo-600 text-white text-center rounded-lg hover:bg-indigo-750 block font-bold cursor-pointer"
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-lg shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer"
                       >
-                        जी हाँ, जारी रखें
+                        हाँ, आगे बढ़ें ➔
                       </a>
                     </div>
                   </div>
@@ -1692,41 +1738,40 @@ export default function App() {
             </div>
           )}
 
-          {/* M. INCLUSIVE EDUCATION PANEL */}
+          {/* M. INCLUSIVE EDUCATION (CWSN) PANEL */}
           {activeTab === 'inclusive_edu' && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm space-y-6 animate-fade-in text-left" id="inclusive-edu-panel">
-              <div className="border-b border-slate-100 pb-3 text-left">
-                <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded uppercase font-display">
-                  समावेशी बाल सुदृढ़ीकरण
-                </span>
-                <h3 className="text-lg font-bold text-slate-900 mt-1">❤️ समावेशी शिक्षा प्रभाग : विशेष आवश्यकता वाले बच्चों (CWSN) की प्रगति</h3>
-                <p className="text-xs text-slate-500 mt-1">शारीरिक एवं मानसिक रूप से दिव्यांग बालकों के सर्वांगीण विकास हेतु संचालित सहायता, शिक्षण एवं भौतिक आवंटन सांख्यिकी</p>
+            <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm space-y-6 animate-fade-in text-left font-sans" id="inclusive-panel">
+              <div className="border-b border-slate-100 pb-3 flex justify-between items-center text-left">
+                <div>
+                  <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded uppercase font-display">
+                    विशेष योग्यजन समन्वयक (CWSN Wing)
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900 mt-1">❤️ समावेशी शिक्षा: विशेष आवश्यकता वाले बच्चों का संबल</h3>
+                  <p className="text-xs text-slate-500 mt-1">पहाड़ी ब्लॉक के अंतर्गत पंजीकृत दिव्यांग (CWSN) बालकों के लिए संचालित शैक्षणिक नीतियां व परिवहन भत्ते की स्थिति</p>
+                </div>
+                <Heart className="w-8 h-8 text-rose-500 animate-pulse hidden sm:block shrink-0" />
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="bg-gradient-to-tr from-slate-50 to-rose-50/30 border border-slate-200 rounded-xl p-4 text-center">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">कुल CWSN नामांकन</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1 font-mono">{inclusiveStats.totalCwsn}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-tr from-rose-50/50 to-pink-50/30 border border-rose-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-mono font-black text-rose-600">{inclusiveStats.totalCwsn}</p>
+                  <p className="text-[11px] font-bold text-slate-600 mt-1">कुल पंजीकृत CWSN छात्र</p>
                 </div>
-                <div className="bg-gradient-to-tr from-slate-50 to-rose-50/30 border border-slate-200 rounded-xl p-4 text-center">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">सक्रिय संदर्भ कक्ष</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1 font-mono">{inclusiveStats.resourceRooms}</p>
+                <div className="bg-gradient-to-tr from-orange-50/50 to-amber-50/30 border border-orange-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-mono font-black text-orange-600">{inclusiveStats.escortGirls}</p>
+                  <p className="text-[11px] font-bold text-slate-600 mt-1">परिवहन/एस्कॉर्ट प्राप्त छात्र</p>
                 </div>
-                <div className="bg-gradient-to-tr from-slate-50 to-rose-50/30 border border-slate-200 rounded-xl p-4 text-center">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">विशेष शिक्षक संख्या</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1 font-mono">{inclusiveStats.specialEducators}</p>
+                <div className="bg-gradient-to-tr from-indigo-50/50 to-blue-50/30 border border-indigo-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-mono font-black text-indigo-600">{inclusiveStats.specialEducators}</p>
+                  <p className="text-[11px] font-bold text-slate-600 mt-1">पदस्थापित विशेष शिक्षक</p>
                 </div>
-                <div className="bg-gradient-to-tr from-slate-50 to-rose-50/30 border border-slate-200 rounded-xl p-4 text-center">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">सहायक उपकरण वितरण</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1 font-mono">{inclusiveStats.equipmentsDistributed}</p>
-                </div>
-                <div className="bg-gradient-to-tr from-slate-50 to-rose-50/30 border border-slate-200 rounded-xl p-4 text-center col-span-2 md:col-span-1">
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">परिवहन व एस्कॉर्ट लाभांवित</p>
-                  <p className="text-2xl font-black text-rose-600 mt-1 font-mono">{inclusiveStats.escortGirls}</p>
+                <div className="bg-gradient-to-tr from-emerald-50/50 to-teal-50/30 border border-emerald-200 rounded-xl p-4 text-center">
+                  <p className="text-2xl font-mono font-black text-emerald-600">{inclusiveStats.equipmentsDistributed}</p>
+                  <p className="text-[11px] font-bold text-slate-600 mt-1">वितरित उपकरण व सामग्री</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 text-left">
                 <div className="border rounded-xl p-5 bg-slate-50/50 space-y-3">
                   <h4 className="text-sm font-black text-slate-900 border-b pb-2 flex items-center gap-1.5 font-display text-rose-955">
                     <Heart className="w-4 h-4 text-rose-600 animate-pulse" />
@@ -2258,6 +2303,95 @@ export default function App() {
                             >
                               + नई लाइव घोषणा पंक्ति जोडें
                             </button>
+                          </div>
+
+                          {/* CM & Education Minister Portals Base64 Upload Module */}
+                          <div className="bg-white p-3.5 rounded-xl border border-indigo-100 space-y-3">
+                            <label className="text-xs font-black text-slate-800 uppercase tracking-tight block flex items-center gap-1">
+                              <span>👑 माननीय नेतृत्व छायाचित्र (Header Dignitary Portraits):</span>
+                            </label>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* CM Photo Upload */}
+                              <div className="border border-slate-200 rounded-lg p-3 space-y-2 bg-slate-50/50">
+                                <span className="text-[11px] font-bold text-slate-700 block">1. माननीय मुख्यमंत्री (CM Shri Bhajan Lal Sharma):</span>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-100 shrink-0 shadow-sm col-span-1">
+                                    <img src={cmPhotoUrl} alt="CM Preview" className="w-full h-full object-cover object-top" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            if (typeof reader.result === 'string') {
+                                              setCmPhotoUrl(reader.result);
+                                              localStorage.setItem('cm_photo_url', reader.result);
+                                            }
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      className="text-[10px] text-slate-600 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        const def = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Bhajan_Lal_Sharma_in_2024.jpg/250px-Bhajan_Lal_Sharma_in_2024.jpg';
+                                        setCmPhotoUrl(def);
+                                        localStorage.setItem('cm_photo_url', def);
+                                      }}
+                                      className="text-[9px] text-red-600 hover:underline block font-bold cursor-pointer text-left"
+                                    >
+                                      पूर्वनिर्धारित पर रीसेट करें
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Education Minister Photo Upload */}
+                              <div className="border border-slate-200 rounded-lg p-3 space-y-2 bg-slate-50/50">
+                                <span className="text-[11px] font-bold text-slate-700 block">2. माननीय शिक्षा मंत्री (Minister Shri Madan Dilawar):</span>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-400 bg-slate-100 shrink-0 shadow-sm col-span-1">
+                                    <img src={minPhotoUrl} alt="Minister Preview" className="w-full h-full object-cover object-top" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            if (typeof reader.result === 'string') {
+                                              setMinPhotoUrl(reader.result);
+                                              localStorage.setItem('min_photo_url', reader.result);
+                                            }
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      className="text-[10px] text-slate-600 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 cursor-pointer"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        const def = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Madan_Dilawar_in_2024.jpg/250px-Madan_Dilawar_in_2024.jpg';
+                                        setMinPhotoUrl(def);
+                                        localStorage.setItem('min_photo_url', def);
+                                      }}
+                                      className="text-[9px] text-red-650 hover:underline block font-bold cursor-pointer text-left"
+                                    >
+                                      पूर्वनिर्धारित पर रीसेट करें
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -3185,9 +3319,15 @@ export default function App() {
                         localStorage.setItem('block_circular_orders', JSON.stringify(circularOrders));
                         localStorage.setItem('block_global_drive_folder', globalDriveFolder);
                         localStorage.setItem('block_announcements_ticker', JSON.stringify(announcements));
+                        localStorage.setItem('cm_photo_url', cmPhotoUrl);
+                        localStorage.setItem('min_photo_url', minPhotoUrl);
+
+                        // Lock the panel to secure the system and open all other navigation routes
+                        setIsUnlocked(false);
+                        localStorage.removeItem('did_unlock_editor');
 
                         // Simple feedback
-                        alert('कार्यालय प्रविष्टि डेटा सफलतापूर्वक सहेज लिया गया है एवं पूरे डैशबोर्ड में अद्यतन कर दिया गया है!');
+                        alert('कार्यालय प्रविष्टि डेटा सफलतापूर्वक सहेज लिया गया है एवं सुरक्षा कारणों से पैनल को पुनः सुरक्षित लॉक कर दिया गया है!');
                       }}
                       className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
                     >
