@@ -1,0 +1,6 @@
+{
+  "name": "कार्यालय मुख्य ब्लॉक शिक्षा अधिकारी, पहाड़ी",
+  "description": "मुख्य ब्लॉक शिक्षा अधिकारी, पहाड़ी (डीग), राजस्थान का प्रोफेशनल शैक्षिक डैशबोर्ड और ऑटो-एनालिसिस पोर्टल",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

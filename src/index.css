@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@300;400;500;600;700;800&family=Rajdhani:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Sans Devanagari', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Rajdhani', 'Noto Sans Devanagari', sans-serif;
+}
+
+/* Custom transitions and glassmorphism elements */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.glow-btn:hover {
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+}
+
+/* Print layout optimizations for evaluation documents */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
